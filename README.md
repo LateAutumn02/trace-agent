@@ -1,4 +1,25 @@
-# OpenWork
+# TRACE-Agent
+
+TRACE-Agent is an OpenWork fork for desktop multi-agent orchestration. Its first preview runs two workspace reviews through a lead session and exposes both worker results and their original sessions in OpenWork.
+
+[Try the team review](./docs/features/trace-team-runs/README.md) · [Development and verification](./docs/trace-agent/development.md)
+
+<p align="center">
+  <img src="./docs/features/trace-team-runs/team-review.jpg" width="440" alt="TRACE-Agent team review showing both workspace workers finished, their findings, and links to the original sessions" />
+</p>
+
+```mermaid
+flowchart LR
+    UI["TRACE-Agent · Team review"] --> Server["OpenWork Server · Workspace proxy"]
+    Server --> Lead["OpenCode v2 · Lead session"]
+    Lead --> Ensemble["Ensemble · Team coordination"]
+    Ensemble --> A["Explore worker A"]
+    Ensemble --> B["Explore worker B"]
+    A -->|Report| Lead
+    B -->|Report| Lead
+```
+
+## Upstream OpenWork
 
 <p align="center">
   <img src="./docs/images/model-picker.png" width="560" alt="The OpenWork composer with its model picker open: pinned, recent and per-provider models from Anthropic, OpenAI, Google and a local Ollama model" />
