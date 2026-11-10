@@ -66,6 +66,7 @@ Hooks never commit, push, or change CI/Warden policy; CI remains authoritative.
 
 ## Coding
 
+* TRACE-Agent changes also follow [TRACE-Agent development standards](docs/trace-agent/development.md).
 * pnpm only, never npm/yarn. TypeScript: never `any`, typecasts, or `as` unless
   100% necessary or instructed.
 * Prefer Tailwind, React, shadcn/ui (Base UI), TanStack Query, Zustand, Zod,
