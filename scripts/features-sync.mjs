@@ -279,7 +279,7 @@ if (check) {
       continue
     }
     for (const file of sourceFiles(absolute)) {
-      const relative = path.relative(root, file)
+      const relative = path.relative(root, file).split(path.sep).join("/")
       const text = readFileSync(file, "utf8")
       if (relative.startsWith("ee/apps/den-api/src")) {
         for (const match of text.matchAll(/\bDEN_[A-Z0-9_]+_ENABLED\b/g)) {

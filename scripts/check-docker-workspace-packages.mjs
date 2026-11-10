@@ -23,7 +23,7 @@ function readJson(file) {
 
 /** name -> repo-relative directory, from the simple "dir/*" globs in pnpm-workspace.yaml. */
 function workspacePackages(root) {
-  const yaml = readFileSync(path.join(root, "pnpm-workspace.yaml"), "utf8")
+  const yaml = readFileSync(path.join(root, "pnpm-workspace.yaml"), "utf8").replace(/\r\n/g, "\n")
   const block = /^packages:\n((?:\s+-\s+.+\n)+)/m.exec(yaml)
   if (!block) throw new Error("pnpm-workspace.yaml has no packages list")
   const globs = [...block[1].matchAll(/-\s+["']?([^"'\n]+?)["']?\s*$/gm)].map((match) => match[1])
