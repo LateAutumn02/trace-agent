@@ -280,6 +280,17 @@ export const FEATURES = defineFeatures({
     deployments: everywhere,
     default: false,
   },
+  traceTeamRuns: {
+    label: "TRACE-Agent team runs",
+    description: "Run two independent workspace reviews together and open each worker’s result.",
+    category: "experience",
+    added: "2026-11-10",
+    since: "2026-11",
+    author: "LateAutumn02",
+    docs: "docs/features/trace-team-runs/README.md",
+    deployments: ["self_hosted"],
+    default: false,
+  },
   ssoPerOrganization: {
     label: "SSO: optional unless required, enforced per organization",
     description: "An organization with SSO set up offers \"Continue with SSO\" at sign-in but still lets people on its domain use their password or Google and join other organizations, for example from an invitation. Turning on \"Require SSO\" enforces it when someone opens that organization, and \"Restrict this domain to our SSO\" brings back sign-in-wide enforcement for the whole domain. Off: any email on the organization's verified domain must sign in with its SSO.",

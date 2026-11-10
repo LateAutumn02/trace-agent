@@ -74,6 +74,7 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
 import { SessionEmptyHero } from "./session-empty-hero";
+import { TraceTeamReview } from "./trace-team-review";
 import type { NewTaskComposerContext, NewTaskComposerHandoff } from "./new-task-composer";
 import type { SessionCloudMcpMaintenanceState } from "../../connections/use-session-mcp-maintenance";
 import { OwDotTicker } from "../../../shell/dot-ticker";
@@ -671,6 +672,7 @@ export function SessionPage(props: SessionPageProps) {
   // Computer use on this Mac, behind its feature flag: the header Computer
   // button, its floating view, in-chat requests and the hand-back at turn end.
   const computerUseFeature = useDesktopFeature("computerUse");
+  const traceTeamRuns = useDesktopFeature("traceTeamRuns");
   const computerHistoryFeature = useDesktopFeature("computerSessionHistory");
   useEffect(() => {
     useComputerSessionHistoryStore.getState().setEnabled(computerHistoryFeature);
@@ -2093,6 +2095,16 @@ export function SessionPage(props: SessionPageProps) {
                         }
                         onOpenProviderAuth={props.onOpenProviderAuth}
                         composer={props.newTaskComposer}
+                        extraAction={traceTeamRuns && props.selectedWorkspaceDisplay.workspaceType === "local"
+                          && props.openworkServerClient?.token && props.runtimeWorkspaceId && props.newTaskComposer ? (
+                            <TraceTeamReview
+                              client={props.openworkServerClient}
+                              workspaceId={props.runtimeWorkspaceId}
+                              model={props.newTaskComposer.selectedModel}
+                              modelUnavailable={Boolean(props.newTaskComposer.modelUnavailable)}
+                              onOpenSession={(sessionId) => openSessionTab(props.selectedWorkspaceId, sessionId)}
+                            />
+                          ) : null}
                       />
                     </div>
                   )}

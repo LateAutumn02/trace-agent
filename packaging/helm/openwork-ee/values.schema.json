@@ -221,6 +221,16 @@
               ],
               "description": "Desktop: steady chat while a reply runs: While a reply runs, its steps and messages stay in the order they arrive and the chat keeps its place: nothing jumps and no empty gap opens between steps. The steps fold into “Worked for…” once the reply finishes. Turning this off restores the previous live layout. Renders DEN_FEATURE_STEADY_LIVE_TURN."
             },
+            "traceTeamRuns": {
+              "enum": [
+                "",
+                "true",
+                "false",
+                true,
+                false
+              ],
+              "description": "TRACE-Agent team runs: Run two independent workspace reviews together and open each worker’s result. Renders DEN_FEATURE_TRACE_TEAM_RUNS."
+            },
             "ssoPerOrganization": {
               "enum": [
                 "",

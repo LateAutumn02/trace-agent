@@ -10,15 +10,17 @@ import { createInterface } from "node:readline";
 import { test } from "node:test";
 import { setTimeout as delay } from "node:timers/promises";
 import { z } from "zod";
+import { createTraceTeamClient } from "../../app/src/app/lib/trace-team.ts";
 import type { ServerConfig } from "../src/types.js";
 
 const fixtures = [
   { name: "login", filename: "login.txt", fact: "Account locks after five failures." },
   { name: "database", filename: "database.txt", fact: "Connection pool limit is eight." },
 ];
-const model = { id: "fixture", providerID: "trace-smoke" };
+const model = { modelID: "fixture", providerID: "trace-smoke" };
 const plugin = "@hueyexe/opencode-ensemble@0.20.0";
 const completionRequest = z.object({
+  tools: z.array(z.object({ function: z.object({ name: z.string() }) })).optional(),
   messages: z.array(z.object({
     role: z.string(),
     content: z.unknown(),
@@ -54,6 +56,7 @@ function scriptedModel(directory: string) {
     }
     try {
       const input = completionRequest.parse(await new Response(ReadableStream.from(request)).json());
+      assert.ok(!input.tools?.some(({ function: tool }) => ["shell", "edit", "write"].includes(tool.name)), "reviews must not expose write tools or a shell");
       const messages = input.messages;
       const latest = JSON.stringify(messages.findLast((message) => message.role === "user")?.content ?? "");
       const calls = messages.flatMap((message) => message.tool_calls?.map((call) => call.function) ?? []);
@@ -80,7 +83,7 @@ function scriptedModel(directory: string) {
         const index = calls.filter(({ arguments: args }) => args.includes("tools.team_spawn(")).length;
         const next = fixtures[index];
         if (next) call = ensembleCall("team_spawn", {
-          name: next.name, agent: "explore", model: `${model.providerID}/${model.id}`, worktree: false,
+          name: index === 0 ? "review-a" : "review-b", agent: "explore", model: `${model.providerID}/${model.modelID}`, worktree: false,
           prompt: `TRACE_FIXTURE_${next.name} read ${next.filename}`,
         });
       }
@@ -89,7 +92,7 @@ function scriptedModel(directory: string) {
         ? { role: "assistant", tool_calls: [{ index: 0, id: `call_${randomUUID()}`, type: "function", function: call }] }
         : { role: "assistant", content: answer };
       const frame = (part: unknown, finish: string | null) => `data: ${JSON.stringify({
-        id, object: "chat.completion.chunk", model: model.id, choices: [{ index: 0, delta: part, finish_reason: finish }],
+        id, object: "chat.completion.chunk", model: model.modelID, choices: [{ index: 0, delta: part, finish_reason: finish }],
       })}\n\n`;
       response.writeHead(200, { "Content-Type": "text/event-stream" });
       response.end(`${frame(delta, null)}${frame({}, call ? "tool_calls" : "stop")}data: [DONE]\n\n`);
@@ -144,7 +147,7 @@ test("TRACE loads Ensemble and two native workers read and report in parallel", 
       providers: { [model.providerID]: {
         name: "TRACE smoke model", package: "@opencode/ai/providers/openai-compatible",
         settings: { baseURL: `http://127.0.0.1:${address.port}/v1`, apiKey: "fixture-only" },
-        models: { [model.id]: { limit: { context: 262_144, output: 8_192 } } },
+        models: { [model.modelID]: { limit: { context: 262_144, output: 8_192 } } },
       } },
     })),
   ]);
@@ -188,10 +191,11 @@ test("TRACE loads Ensemble and two native workers read and report in parallel", 
       reject(new Error(`OpenWork host exited. ${hostError}`));
     }, reject);
   });
-  const call = async (path: string, body?: Record<string, unknown>): Promise<unknown> => {
+  const call = async (path: string, options?: { method?: "POST"; body?: unknown; signal?: AbortSignal }): Promise<unknown> => {
     const response = await fetch(`http://127.0.0.1:${port}${path}`, {
       headers: { authorization: `Bearer ${config.token}`, "Content-Type": "application/json" },
-      method: body ? "POST" : "GET", body: body && JSON.stringify(body), signal: AbortSignal.timeout(30_000),
+      method: options?.method, body: options?.body === undefined ? undefined : JSON.stringify(options.body),
+      signal: AbortSignal.any([AbortSignal.timeout(30_000), ...(options?.signal ? [options.signal] : [])]),
     });
     assert.ok(response.ok, `${path} returned HTTP ${response.status}`);
     return response.json();
@@ -211,12 +215,13 @@ test("TRACE loads Ensemble and two native workers read and report in parallel", 
     assert.ok(Date.now() < deadline, "Ensemble did not become active");
     await delay(250);
   }
-  const lead = session.parse(envelope.parse(await call(`${native}/session`, { title: "TRACE smoke", agent: "build", model })).data);
-  await call(`${native}/session/${lead.id}/prompt`, { text: "Run the TRACE fixture." });
+  const trace = createTraceTeamClient(call);
+  const leadId = await trace.create("ws_trace", model);
+  await trace.start("ws_trace", leadId, ["Read login.txt", "Read database.txt"], model);
   while (true) {
     assert.deepEqual(mock.failures, []);
     const sessions = z.array(session).parse(envelope.parse(await call(`${native}/session?limit=20`)).data);
-    const children = sessions.filter((row) => row.parentID === lead.id);
+    const children = sessions.filter((row) => row.parentID === leadId);
     if (children.length === fixtures.length && children.every((row) => row.outcome === "succeeded")) {
       const workerResults = await Promise.all(children.map(async ({ id }) => {
         const rows = history.parse(envelope.parse(await call(`${native}/session/${id}/message?limit=20`)).data);
@@ -233,6 +238,10 @@ test("TRACE loads Ensemble and two native workers read and report in parallel", 
         && result.state.metadata?.toolCalls?.some(({ tool, status }) => tool === "team_message" && status === "completed"))),
       "both workers must report to the lead");
       assert.ok(mock.overlapped());
+      const snapshot = await trace.snapshot("ws_trace", leadId);
+      assert.equal(snapshot.lead.id, leadId);
+      assert.deepEqual(snapshot.workers.map(({ outcome }) => outcome), ["succeeded", "succeeded"]);
+      for (const { fact } of fixtures) assert.ok(snapshot.workers.some(({ summary }) => summary === fact));
       break;
     }
     assert.ok(Date.now() < deadline, `expected two successful children, got ${JSON.stringify(children)}`);

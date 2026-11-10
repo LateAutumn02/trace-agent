@@ -1,5 +1,5 @@
 /** @jsxImportSource react */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { ArrowRight, X, Zap } from "lucide-react";
 
 import { DEFAULT_MODEL } from "@/app/constants";
@@ -71,6 +71,7 @@ export type SessionEmptyHeroProps = {
   onOpenProviderAuth?: () => void;
   /** Workspace-scoped wiring for the full composer (skills, agents, models). */
   composer?: NewTaskComposerContext | null;
+  extraAction?: ReactNode;
 };
 
 /**
@@ -281,6 +282,7 @@ export function SessionEmptyHero(props: SessionEmptyHeroProps) {
           </DescriptiveButton>
         ))}
       </div>
+      {props.extraAction}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { createTraceTeamClient } from "./trace-team";
 import { parseClaudeAgentIntegrationList } from "./claude-agent";
 import type { McpStatusMap } from "../types";
 import type { ConnectionActionIntent } from "@openwork/types/connection-action-app";
@@ -1641,6 +1642,7 @@ export function createOpenworkServerClient(options: { baseUrl: string; token?: s
 
   return {
     baseUrl,
+    traceTeam: createTraceTeamClient((path, request) => requestJson<unknown>(baseUrl, path, { ...request, token, timeoutMs: 15_000 })),
     claudeAgentIntegration: async (workspaceId: string) => {
       // Listing initializes the native built-in plugin catalog. An item GET can
       // return IntegrationNotFoundError on a fresh engine before this read.
